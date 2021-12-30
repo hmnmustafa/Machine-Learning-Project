@@ -7,11 +7,13 @@ Then, I ran different Machine Learning algorithms on each dataset and analyzed t
 
 # Classification
 I found the classification dataset from https://www.kaggle.com/bluehorseshoe/uk-2016-road-safety-data/data?select=Cas.csv 
+
 This contains data about vehicle accidents in the UK in 2016. I chose my target value to be the Number of Casualties column.
 I performed Logistic Regression, Naive Bayes and Decision Trees on this dataset.
 
 # Regression
 I found the regression dataset from https://archive.ics.uci.edu/ml/datasets/Adult
+
 This contains data about the annual income of people. I chose my target value to be the last column which is the Income column. 
 I performed Linear Regression, kNN Regression and Decision Trees on this dataset.
 
