@@ -1,0 +1,202 @@
+---
+title: "R Project - Classification"
+subtitle: "4375 Machine Learning with Dr. Mazidi"
+author: "Hamna Mustafa"
+date: "10/17/2021"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+# Reading in the data 
+
+I found this dataset from https://archive.ics.uci.edu/ml/datasets/Adult. This contains data about the annual income of people. It has 32561 observations and 15 variables.
+
+
+```{r}
+df <- read.csv("/Users/hmnmustafa/Downloads/adult.data", header = FALSE)
+
+```
+
+# Data Exploration and Data Cleaning
+
+This specific file didn't come with headers but the website contained a file called adult.names which contained information about the attributes. The attributes represent the following information:
+
+1. Age - continuous 
+
+2. Workclass -  factor
+
+3. Fnlwgt - continuous 
+
+4. Education - factor
+
+5. Education Number - continuous 
+
+6. Marital Status - factor
+
+7. Occupation - factor
+
+8. Relationship - factor
+
+9. Race - factor
+
+10. Sex - factor
+
+11. Capital Gain - continuous 
+
+12. Capital Loss - continuous 
+
+13. Hours per week - continuous 
+
+14. Native Country - factor
+
+15. Income <=50k or >50k - factor
+
+
+The 15th column is our target column. Our aim will be to predict whether on adult has an annual income greater than or lesser than 50k. This is classification because our target value is a class. 
+
+```{r}
+str(df)
+names(df)
+head(df, n=15)
+tail(df, n=15)
+```
+
+There are places in the dataset that just have " ?" as a value. This means that we don't know what the value for that is. Thus, we are first going to convert all " ?" into NAs.
+
+Clearly, there are many columns that need to be modified and cleaned up. All the attributes that are not continuous need to be turned into factors. We will add labels to these factors so that we can tell what each integer represents. 
+
+Then, we will check for NAs in each column.
+```{r}
+
+df [df == " ?"] <- NA
+
+df[,2] <- as.factor(df[,2])
+df[,4] <- as.factor(df[,4])
+df[,6] <- as.factor(df[,6])
+df[,7] <- as.factor(df[,7])
+df[,8] <- as.factor(df[,8])
+df[,9] <- as.factor(df[,9])
+df[,10] <- as.factor(df[,10])
+df[,14] <- as.factor(df[,14])
+df[,15] <- as.factor(df[,15])
+
+str(df)
+
+sapply(df, function(x) sum(is.na(x)==TRUE))
+```
+
+As we can see, V2 (Workclass), V7 (Occupation) and V14 (Native Country) have NAs. We will replace these with the factor with the most number of rows in that column. 
+
+```{r}
+summary(df$V2)
+df$V2[is.na(df$V2)] <- df$V2[3]
+
+summary(df$V7)
+df$V7[is.na(df$V7)] <- df$V7[5]
+
+summary(df$V14)
+df$V14[is.na(df$V14)] <- df$V14[1]
+
+sapply(df, function(x) sum(is.na(x)==TRUE))
+
+```
+Next, we will plots graphs of all the predictors with their target variables to get a sense of what the relationships between the target and all the predictors look like. 
+```{r}
+opar = par()
+par(mfrow=c(2,2))
+plot(df$V15, df$V1)
+plot(df$V15, df$V2)
+plot(df$V15, df$V3)
+plot(df$V15, df$V4)
+plot(df$V15, df$V5)
+plot(df$V15, df$V6)
+plot(df$V15, df$V7)
+plot(df$V15, df$V8)
+plot(df$V15, df$V9)
+plot(df$V15, df$V10)
+plot(df$V15, df$V11)
+plot(df$V15, df$V12)
+plot(df$V15, df$V13)
+plot(df$V15, df$V14)
+```
+
+# Divide into Train and Test
+
+Now that the data is all cleaned up, will divide our data into train and test sets.
+```{r}
+set.seed(1234)
+i <- sample(1:nrow(df), 0.75*nrow(df), replace=FALSE)
+train <-df[i,]
+test <- df[-i,]
+```
+
+# Logistic Regression
+
+I am creating a logistic regression model with V15 (annual income) as the target and the rest of the columns as the predictors. 
+Notice we get a warning that fitted probabilites numerically 0 or 1 occurred. This means that our model is predicting absolute values such as 1 or 0. This could be happening because we have many predictors and those a lot of those predictors are factors with many levels.
+
+We get a correlation of 0.663. Furthermore, we got an accuracy of 0.852. This shows the our model performed well on the test data.
+
+```{r}
+glm1 <- glm(V15~., data=train, family="binomial")
+summary(glm1)
+
+probs <- predict(glm1, newdata=test, type="response")
+correlationLR <- cor(probs, as.integer(test$V15))
+print(paste("Logistic Reg Correlation = ", correlationLR))
+
+pred <- ifelse(probs>0.5, 2, 1)
+table(pred, as.integer(test$V15))
+
+accLR <- mean(pred == as.integer(test$V15))
+print(paste("Logistic Reg Accuracy = ", accLR))
+```
+
+# Naive Bayes
+
+Next, we will use Naive Bayes on this dataset. When we use Naive Bayes to train and test on this dataset, we get an accuracy of 0.8261. Although also a good model, we got a better accuracy with logisitc regression.
+
+Another thing we can notice from the knowledge gained by Naive bayes is that the probability of an adult having an annual income of less than or equal to 50k is 76% and 23% for greater than 50k. This shows us that 70% of adults from the train dataset earned less than or equal to 50k.
+
+```{r}
+library(e1071)
+nb1 <- naiveBayes(V15~., data=train)
+nb1
+
+library(caret)
+p1 <- predict(nb1, newdata=test, type="class")
+confusionMatrix(p1, reference=test$V15)
+
+
+```
+
+# Decision Trees 
+
+In Decision Trees, factor predictors can have at most 32 levels. However, V14 has 41 levels so we will get an error if we try to make a tree with V14 as a predictor. Thus, we will make one with all predictors except for V14.
+
+We get an accuracy of 0.8480. This is better than Naive Bayes but still lesser than Logistic Regression. 
+```{r}
+library(tree)
+treeCl <- tree(V15~.-V14, data=train)
+predtree <- predict(treeCl, newdata=test, type="class")
+table(predtree, test$V15)
+print(paste("Decision Tree Accuracy = ", mean(predtree==test$V15)))
+
+
+```
+
+# Results Analysis 
+
+Looking at all the metrics from the different algorithms, this is how I would rank the algorithms from best to worst (for this dataset):
+
+1. Logistic Regression
+2. Decision Trees
+3. Naive Bayes
+
+The fact that Logistic Regression outperformed the other algorithms suggests that this data was able to fit well into a linear model. Furthermore, Naive Bayes performed the worst and that could be because it was a fairly large dataset and Naive Bayes works better with smaller data sets. 
+
+Overall, all the models did a pretty good job and all got accuracy's in 0.80s. This shows that there was a strong relationship between the predictors and the target value. We can use these predictors to predict whether or not an adult has an income or greater than or equal to 50k. 
+
+Thus, this is a useful dataset.
